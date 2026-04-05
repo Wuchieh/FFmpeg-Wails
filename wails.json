@@ -1,0 +1,16 @@
+{
+  "$schema": "https://wails.io/schema",
+  "name": "FFmpeg-Wails",
+  "outputfilename": "FFmpeg-Wails",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build",
+  "frontend:dev": "pnpm dev",
+  "wailsjs": {
+    "version": "2",
+    "outputtype": "desktop"
+  },
+  "author": {
+    "name": "Wuchieh",
+    "email": "wuchieh@example.com"
+  }
+}

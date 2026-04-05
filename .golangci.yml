@@ -1,0 +1,63 @@
+version: "2"
+run:
+  concurrency: 4
+  go: '1.25'
+  tests: false
+  timeout: 1m
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - unused
+    - gocritic
+    - gocyclo
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - unparam
+  settings:
+    gocyclo:
+      min-complexity: 20
+    misspell:
+      locale: US
+    nakedret:
+      max-func-lines: 20
+    revive:
+      rules:
+        - name: var-naming
+        - name: indent-error-flow
+        - name: error-return
+        - name: exported
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: should have comment or be unexported
+      - linters:
+          - revive
+        text: package comment should be of the form
+      - path: internal/utils
+        linters:
+          - revive
+          - staticcheck
+    paths:
+      - third_party$
+      - builtin$
+      - example/*
+formatters:
+  enable:
+    - gofumpt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$

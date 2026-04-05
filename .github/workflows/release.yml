@@ -1,0 +1,113 @@
+name: Test and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.0
+
+      - name: Lint
+        run: golangci-lint run --config .golangci.yml ./...
+
+      - name: Test
+        run: go test ./... -v -timeout 60s
+
+  build:
+    name: Build ${{ matrix.platform.name }}
+    needs: test
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      matrix:
+        platform:
+          - name: windows-amd64
+            os: windows-latest
+            ext: .exe
+          - name: darwin-amd64
+            os: macos-latest
+            ext: ""
+          - name: darwin-arm64
+            os: macos-latest
+            ext: ""
+          - name: linux-amd64
+            os: ubuntu-latest
+            ext: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm install && pnpm build
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: 0
+        run: |
+          go build -o FFmpeg-Wails${{ matrix.platform.ext }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFmpeg-Wails-${{ matrix.platform.name }}
+          path: FFmpeg-Wails${{ matrix.platform.ext }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
