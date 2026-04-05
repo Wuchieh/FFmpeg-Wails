@@ -32,6 +32,7 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        shell: bash
         run: |
           pnpm install
           pnpm nuxi generate
@@ -97,6 +98,7 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        shell: bash
         run: |
           pnpm install
           pnpm nuxi generate
