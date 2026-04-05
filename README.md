@@ -1,369 +1,263 @@
-FFmpeg GUI Tool (Wails + Nuxt 4)
+# FFmpeg-Wails
 
-一個基於 Wails (Go) + Nuxt 4 的跨平台 FFmpeg 圖形化工具，提供影片轉檔、處理與即時串流（RTMP / SRT）功能。
+A cross-platform FFmpeg GUI built with [Wails](https://wails.io/) (Go) + [Nuxt 4](https://nuxt.com/) (Vue 3).
 
+Convert video/audio, stream to RTMP/SRT platforms, and manage tasks — all from a native desktop app with a modern dark UI.
 
----
-
-✨ Features
-
-🎬 基礎功能
-
-影片 / 音訊轉檔（MP4, MKV, WebM, MP3...）
-
-視訊壓縮（CRF / Bitrate）
-
-解析度調整（720p / 1080p / 自訂）
-
-幀率調整（FPS）
-
-音訊抽取 / 替換
-
-字幕燒錄（soft / hard subtitle）
-
-GIF / WebP 轉換
-
-
-🚀 進階功能
-
-自訂 FFmpeg 指令（raw command）
-
-批次處理（Batch Processing）
-
-任務佇列（Queue）
-
-即時進度顯示
-
-錯誤 log / stdout 顯示
-
-
-📡 串流功能（Streaming）
-
-支援將影片或即時來源推流至串流平台：
-
-RTMP 推流（YouTube / Twitch / 自建伺服器）
-
-SRT 推流（低延遲傳輸）
-
-支援來源：
-
-本地影片檔案
-
-WebCam / Capture Device
-
-RTSP / HTTP 串流
-
-
-
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
-🧱 Tech Stack
+## Features
 
-Frontend
+### 🎬 Convert
 
-Nuxt 4
+Video and audio conversion with full codec control:
 
-Vue 3
+| Option | Choices |
+|--------|---------|
+| Video Codec | H.264, H.265, VP9, AV1, Copy |
+| Audio Codec | AAC, MP3, Opus, Copy |
+| Resolution | Original, 1080p, 720p, 480p, 360p |
+| CRF | 0–51 (lower = better quality) |
+| FPS | Custom frame rate |
+| Bitrate | Video & audio bitrate control |
+| Subtitles | Burn-in from .srt / .ass files |
+| Extra Args | Raw FFmpeg flags for advanced use |
 
-UnoCSS
+Real-time progress bar with FPS, bitrate, speed, and time tracking.
 
+### 📡 Stream
 
-Backend
+Push to live platforms via RTMP or SRT:
 
-Wails v2
+- **RTMP** — YouTube, Twitch, custom servers (with one-click URL presets)
+- **SRT** — Low-latency transport with configurable latency
+- Supports local files and live sources (RTSP/HTTP)
 
-Go
+### 📋 Tasks
 
-FFmpeg
+Unified task management panel:
 
-
+- View all tasks (convert + stream) sorted by time
+- Real-time status badges: running, completed, failed, cancelled
+- Collapsible log viewer per task
+- Cancel running tasks
 
 ---
 
-📦 Installation
+## Tech Stack
 
-1. 安裝 FFmpeg
+| Layer | Technology |
+|-------|-----------|
+| Backend | Go, Wails v2 |
+| Frontend | Nuxt 4, Vue 3, UnoCSS |
+| Engine | FFmpeg / ffprobe |
+| CI/CD | GitHub Actions (test → build → release) |
 
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Go](https://go.dev/dl/) 1.25+
+- [Node.js](https://nodejs.org/) 22+
+- [pnpm](https://pnpm.io/) 9+
+- [FFmpeg](https://ffmpeg.org/) installed and in PATH
+
+Install FFmpeg:
+
+```bash
 # macOS
 brew install ffmpeg
 
-# Ubuntu
+# Ubuntu / Debian
 sudo apt install ffmpeg
 
-# Windows
-# 下載 https://ffmpeg.org/download.html
+# Windows — download from https://ffmpeg.org/download.html
+```
 
-確認：
+Verify:
 
+```bash
 ffmpeg -version
+ffprobe -version
+```
 
+### Install Wails CLI
 
----
-
-2. 安裝 Wails
-
+```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
+```
 
+### Run in Development
 
----
+```bash
+git clone https://github.com/Wuchieh/FFmpeg-Wails.git
+cd FFmpeg-Wails
 
-3. 安裝前端依賴
+# Install frontend dependencies
+cd frontend && pnpm install && cd ..
 
-cd frontend
-pnpm install
-
-
----
-
-🚀 Development
-
+# Start dev server (Go backend + Nuxt frontend with hot reload)
 wails dev
+```
 
-自動啟動 Go backend + Nuxt frontend
+### Build
 
-支援 hot reload
-
-
-
----
-
-🏗 Build
-
+```bash
 wails build
+```
 
-輸出：
+Output binaries in `build/bin/`:
 
-macOS .app
-
-Windows .exe
-
-Linux binary
-
-
+- **macOS** — `.app`
+- **Windows** — `.exe`
+- **Linux** — binary
 
 ---
 
-📁 Project Structure
+## Project Structure
 
-.
+```
+FFmpeg-Wails/
+├── main.go                  # App entry, FFmpeg availability check
 ├── backend/
-│   ├── main.go
-│   ├── ffmpeg/
-│   │   ├── runner.go
-│   │   ├── command.go
-│   │   └── stream.go
-│
+│   └── app.go               # Wails-bound App (tasks, file dialogs, events)
+├── ffmpeg/
+│   ├── command.go           # Build FFmpeg args (convert + stream)
+│   ├── runner.go            # Execute FFmpeg, parse progress, cancel support
+│   └── stream.go            # High-level stream launcher
 ├── frontend/
-│   ├── app.vue
+│   ├── app.vue              # Layout with navigation
+│   ├── nuxt.config.ts       # Nuxt 4 + UnoCSS config
 │   ├── pages/
+│   │   ├── convert.vue      # Conversion UI
+│   │   ├── stream.vue       # Streaming UI
+│   │   └── tasks.vue        # Task management UI
 │   ├── components/
+│   │   ├── FileSelector.vue # Native file/directory picker
+│   │   ├── ProgressBar.vue  # Animated progress bar
+│   │   └── LogViewer.vue    # Scrollable log output
 │   └── composables/
-│
+│       └── useFFmpeg.ts     # Wails bindings + event handling
+├── .github/workflows/
+│   └── release.yml          # CI: test → build → GitHub Release
 ├── wails.json
-└── README.md
-
-
----
-
-⚙️ FFmpeg Integration
-
-基本轉檔
-
-ffmpeg -i input.mp4 -c:v libx264 -crf 23 output.mp4
-
-WebP 轉換
-
-ffmpeg -i input.gif -vcodec libwebp output.webp
-
+└── go.mod
+```
 
 ---
 
-📡 Streaming Usage
+## Architecture
 
-🔴 RTMP 推流
+### Backend (Go)
 
-ffmpeg -re -i input.mp4 \
-  -c:v libx264 -preset veryfast -b:v 3000k \
-  -c:a aac -b:a 128k \
-  -f flv rtmp://<server>/<app>/<stream_key>
+The `App` struct is bound to Wails and exposed to the frontend:
 
-🟣 SRT 推流
+```go
+// Key methods exposed to frontend:
+app.StartTask(payloadJSON)    // Auto-detects convert vs stream
+app.CancelTask(id)            // Kill running FFmpeg process
+app.GetTaskStatus(id)         // Poll task state
+app.ListTasks()               // List all tasks
+app.SelectFile()              // Native file dialog
+app.SelectDirectory()         // Native directory dialog
+app.GetFFmpegVersion()        // Probe installed FFmpeg
+```
 
-ffmpeg -re -i input.mp4 \
-  -c:v libx264 -b:v 2500k \
-  -c:a aac \
-  -f mpegts \
-  "srt://<host>:<port>?mode=caller&latency=200"
+FFmpeg commands are built by `ffmpeg.BuildConvertArgs()` / `ffmpeg.BuildStreamArgs()` and executed by `ffmpeg.Runner`. Progress is parsed from FFmpeg's stderr using regex (frame, fps, bitrate, time, speed) and emitted to the frontend via Wails events.
 
+Duration probing via `ffprobe` enables accurate percentage calculation.
+
+### Frontend (Vue 3 + Nuxt 4)
+
+Three pages connected by `useFFmpeg()` composable:
+
+- **`/convert`** — Form with codec/resolution/CRF controls, native file picker, live progress bar
+- **`/stream`** — RTMP/SRT protocol toggle, platform presets (YouTube/Twitch), live source toggle
+- **`/tasks`** — Sorted task list with status badges, collapsible logs, cancel buttons
+
+Real-time updates via `window.runtime.EventsOn()` (Wails event system).
+
+### Events
+
+| Event | Data | Description |
+|-------|------|-------------|
+| `task:progress` | `{id, progress, fps, bitrate, time, frame, speed}` | Live progress update |
+| `task:log` | `{id, line}` | FFmpeg stderr line |
+| `task:done` | `{id, status, error}` | Task completed/failed/cancelled |
 
 ---
 
-🧠 Backend Design (Go + Wails)
+## Releasing
 
-任務模型
+Pushing a tag triggers the full CI pipeline:
 
-type Task struct {
-    ID        string
-    Command   string
-    Status    string
-    Progress  float64
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions will:
+
+1. **Test** — `go vet`, `golangci-lint`, `go test`
+2. **Build** — Cross-compile for Windows, macOS (amd64 + arm64), Linux
+3. **Release** — Create a GitHub Release with all binaries attached
+
+---
+
+## API Reference (Backend → Frontend)
+
+### `StartTask(payloadJSON: string): Task`
+
+Auto-detects task type from payload:
+
+- Has `url` field → **stream** task
+- Otherwise → **convert** task
+
+**Convert payload:**
+
+```json
+{
+  "input": "/path/to/input.mp4",
+  "output": "/path/to/output.mp4",
+  "videoCodec": "libx264",
+  "crf": 23,
+  "resolution": "1280:720",
+  "fps": 30,
+  "audioCodec": "aac",
+  "audioBitrate": "128k",
+  "subtitleFile": "/path/to/sub.srt",
+  "extraArgs": "-vf eq=brightness=0.1"
 }
+```
 
-執行 FFmpeg
+**Stream payload:**
 
-cmd := exec.Command("ffmpeg", args...)
-stdout, _ := cmd.StdoutPipe()
-cmd.Start()
-
-透過解析 stderr / stdout 取得：
-
-progress
-
-fps
-
-bitrate
-
-
-
----
-
-🎨 Frontend Design (Nuxt 4)
-
-核心頁面
-
-/convert：轉檔
-
-/stream：推流
-
-/tasks：任務管理
-
-
-Composable
-
-export const useFFmpeg = () => {
-  const startTask = async (payload) => {
-    return await window.go.main.App.StartTask(payload)
-  }
+```json
+{
+  "source": "/path/to/input.mp4",
+  "protocol": "rtmp",
+  "url": "rtmp://a.rtmp.youtube.com/live2/STREAM-KEY",
+  "videoCodec": "libx264",
+  "preset": "veryfast",
+  "bitrate": "3000k",
+  "isLive": false
 }
-
-
----
-
-🔐 注意事項
-
-RTMP key 請妥善保管
-
-SRT 建議設定 latency
-
-高 bitrate 需要穩定網路
-
-
+```
 
 ---
 
-🧩 Roadmap
+## License
 
-[ ] HLS / DASH 支援
-
-[ ] GPU 加速（NVENC / VAAPI）
-
-[ ] OBS-like preview
-
-[ ] 插件系統
-
-[ ] 雲端任務同步
-
-
+[MIT](./LICENSE)
 
 ---
 
-📄 License
+## Credits
 
-MIT
-
-
----
-
-🙌 Credits
-
-FFmpeg
-
-Wails
-
-Nuxt
-
-
-
----
-
-如果你有需求（例如 WebRTC / 直播聊天室整合），可以再擴展此專案。
-
-我已經幫你把完整 README.md 建在右側 canvas，內容是偏工程實戰導向的版本（不是空泛介紹），包含：
-
-FFmpeg GUI 功能設計（轉檔 / WebP / 任務佇列）
-
-RTMP / SRT 推流範例（可直接用）
-
-Wails + Go backend 架構
-
-Nuxt 4 frontend 組織方式
-
-專案結構
-
-指令與實際 code snippet
-
-
-如果你要更進一步優化，我可以幫你再升級幾個方向（這些會讓專案更「像產品」而不是 demo）：
-
-1. 推流 UI 設計（很關鍵）
-
-Stream Key 管理
-
-Server preset（YouTube / Twitch / 自建）
-
-bitrate / resolution slider
-
-
-
-2. FFmpeg command builder（核心價值）
-
-用 UI 組 command（避免讓使用者寫 CLI）
-
-例如：
-
-codec selector
-
-CRF vs bitrate toggle
-
-
-
-
-3. 即時 log parsing（你 Go 很適合做）
-
-解析：
-
-frame=
-
-fps=
-
-time=
-
-
-前端做 progress bar
-
-
-
-4. 串流 + 本地預覽（進階）
-
-用：
-
-ffplay
-
-或 WebRTC bridge（你之前有做直播，這塊你會很強）
-
-
-
-
-
-
+- [FFmpeg](https://ffmpeg.org/) — The engine behind it all
+- [Wails](https://wails.io/) — Go + Web frontend → native desktop
+- [Nuxt](https://nuxt.com/) — Vue 3 meta-framework
