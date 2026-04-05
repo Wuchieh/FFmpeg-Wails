@@ -3,12 +3,11 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"ffmpeg-wails/ffmpeg"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
-
-	"ffmpeg-wails/ffmpeg"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
