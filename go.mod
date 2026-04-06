@@ -1,6 +1,6 @@
 module ffmpeg-wails
 
-go 1.24.1
+go 1.25.8
 
 require github.com/wailsapp/wails/v2 v2.12.0
 
