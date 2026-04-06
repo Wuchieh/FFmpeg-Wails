@@ -69,24 +69,16 @@ jobs:
         platform:
           - name: windows-amd64
             os: windows-latest
-            ext: .exe
-            goos: windows
-            goarch: amd64
-          - name: darwin-amd64
+            ext: ".exe"
+            wails-platform: windows/amd64
+          - name: darwin-universal
             os: macos-latest
             ext: ""
-            goos: darwin
-            goarch: amd64
-          - name: darwin-arm64
-            os: macos-latest
-            ext: ""
-            goos: darwin
-            goarch: arm64
+            wails-platform: darwin/universal
           - name: linux-amd64
             os: ubuntu-latest
             ext: ""
-            goos: linux
-            goarch: amd64
+            wails-platform: linux/amd64
 
     steps:
       - uses: actions/checkout@v4
@@ -104,28 +96,21 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build frontend
-        working-directory: frontend
-        shell: bash
-        run: |
-          pnpm install
-          pnpm nuxi generate
-          rm -rf dist
-          cp -r .output/public dist
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Build binary
-        env:
-          CGO_ENABLED: 0
-          GOOS: ${{ matrix.platform.goos }}
-          GOARCH: ${{ matrix.platform.goarch }}
-        run: |
-          go build -o FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }} .
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev
+
+      - name: Build with Wails
+        run: wails build -platform "${{ matrix.platform.wails-platform }}" -o "FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }}" -skipbindings
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: FFmpeg-Wails-${{ matrix.platform.name }}
-          path: FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }}
+          path: build/bin/FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }}
 
   release:
     name: Create Release
