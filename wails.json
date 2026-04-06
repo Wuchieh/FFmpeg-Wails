@@ -1,9 +1,9 @@
 {
-  "$schema": "https://wails.io/schema",
+  "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "FFmpeg-Wails",
   "outputfilename": "FFmpeg-Wails",
   "frontend:install": "pnpm install",
-  "frontend:build": "pnpm build",
+  "frontend:build": "pnpm generate",
   "frontend:dev": "pnpm dev",
   "wailsjs": {
     "version": "2",
