@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -56,16 +57,17 @@ type StreamPayload struct {
 
 // App is the main application struct exposed to the Wails frontend.
 type App struct {
-	ctx    context.Context
-	mu     sync.RWMutex
-	tasks  map[string]*Task
-	runner *ffmpeg.Runner
+	ctx     context.Context
+	mu      sync.RWMutex
+	tasks   map[string]*Task
+	runners map[string]*ffmpeg.Runner
 }
 
 // NewApp creates a new App instance.
 func NewApp() *App {
 	return &App{
-		tasks: make(map[string]*Task),
+		tasks:   make(map[string]*Task),
+		runners: make(map[string]*ffmpeg.Runner),
 	}
 }
 
@@ -109,7 +111,6 @@ func (a *App) SelectDirectory() string {
 func (a *App) StartTask(payloadJSON string) (*Task, error) {
 	var taskType string
 
-	// Try to detect the task type from the payload
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(payloadJSON), &raw); err != nil {
 		return nil, fmt.Errorf("invalid payload: %w", err)
@@ -121,7 +122,7 @@ func (a *App) StartTask(payloadJSON string) (*Task, error) {
 		taskType = "convert"
 	}
 
-	id := fmt.Sprintf("%d", time.Now().UnixNano())
+	id := uuid.New().String()
 	task := &Task{
 		ID:        id,
 		Type:      taskType,
@@ -140,45 +141,17 @@ func (a *App) StartTask(payloadJSON string) (*Task, error) {
 	return a.startStreamTask(id, task, payloadJSON)
 }
 
-func (a *App) startConvertTask(id string, task *Task, payloadJSON string) (*Task, error) {
-	var payload ConvertPayload
-	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
-		return nil, fmt.Errorf("invalid convert payload: %w", err)
-	}
-
-	args, err := ffmpeg.BuildConvertArgs(ffmpeg.ConvertOptions{
-		Input:        payload.Input,
-		Output:       payload.Output,
-		VideoCodec:   payload.VideoCodec,
-		AudioCodec:   payload.AudioCodec,
-		Resolution:   payload.Resolution,
-		FPS:          payload.FPS,
-		CRF:          payload.CRF,
-		Bitrate:      payload.Bitrate,
-		AudioBitrate: payload.AudioBitrate,
-		SubtitleFile: payload.SubtitleFile,
-		Format:       payload.Format,
-		ExtraArgs:    payload.ExtraArgs,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to build command: %w", err)
-	}
-
-	task.Input = payload.Input
-	task.Output = payload.Output
-	task.Command = fmt.Sprintf("ffmpeg %s", strings.Join(args, " "))
-	task.Status = "running"
-
-	// Probe duration for progress calculation
-	duration, _ := ffmpeg.GetInputDuration(payload.Input)
-
+// runTask is the common logic for starting a task runner.
+func (a *App) runTask(id string, task *Task, args []string, duration float64) {
 	runner := ffmpeg.NewRunner()
 	runner.Duration = duration
 
 	runner.OnProgress = func(info ffmpeg.ProgressInfo) {
 		a.mu.Lock()
-		task.Progress = info.Progress
 		task.Status = "running"
+		if duration > 0 {
+			task.Progress = info.Progress
+		}
 		a.mu.Unlock()
 		runtime.EventsEmit(a.ctx, "task:progress", map[string]interface{}{
 			"id":       id,
@@ -216,16 +189,49 @@ func (a *App) startConvertTask(id string, task *Task, payloadJSON string) (*Task
 	}
 
 	a.mu.Lock()
-	a.runner = runner
+	a.runners[id] = runner
 	a.mu.Unlock()
 
 	go func() {
 		ctx := context.Background()
 		if runErr := runner.Run(ctx, args); runErr != nil {
-			// Handled by OnDone callback.
 			_ = runErr
 		}
 	}()
+}
+
+func (a *App) startConvertTask(id string, task *Task, payloadJSON string) (*Task, error) {
+	var payload ConvertPayload
+	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+		return nil, fmt.Errorf("invalid convert payload: %w", err)
+	}
+
+	args, err := ffmpeg.BuildConvertArgs(ffmpeg.ConvertOptions{
+		Input:        payload.Input,
+		Output:       payload.Output,
+		VideoCodec:   payload.VideoCodec,
+		AudioCodec:   payload.AudioCodec,
+		Resolution:   payload.Resolution,
+		FPS:          payload.FPS,
+		CRF:          payload.CRF,
+		Bitrate:      payload.Bitrate,
+		AudioBitrate: payload.AudioBitrate,
+		SubtitleFile: payload.SubtitleFile,
+		Format:       payload.Format,
+		ExtraArgs:    payload.ExtraArgs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to build command: %w", err)
+	}
+
+	task.Input = payload.Input
+	task.Output = payload.Output
+	task.Command = fmt.Sprintf("ffmpeg %s", strings.Join(args, " "))
+	task.Status = "running"
+
+	duration, _ := ffmpeg.GetInputDuration(payload.Input)
+
+	a.runTask(id, task, args, duration)
 
 	return task, nil
 }
@@ -256,55 +262,7 @@ func (a *App) startStreamTask(id string, task *Task, payloadJSON string) (*Task,
 	task.Command = fmt.Sprintf("ffmpeg %s", strings.Join(args, " "))
 	task.Status = "running"
 
-	runner := ffmpeg.NewRunner()
-
-	runner.OnProgress = func(info ffmpeg.ProgressInfo) {
-		a.mu.Lock()
-		task.Status = "running"
-		a.mu.Unlock()
-		runtime.EventsEmit(a.ctx, "task:progress", map[string]interface{}{
-			"id":      id,
-			"fps":     info.FPS,
-			"bitrate": info.Bitrate,
-			"time":    info.Time,
-			"frame":   info.Frame,
-			"speed":   info.Speed,
-		})
-	}
-
-	runner.OnLog = func(line string) {
-		runtime.EventsEmit(a.ctx, "task:log", map[string]interface{}{
-			"id":   id,
-			"line": line,
-		})
-	}
-
-	runner.OnDone = func(runErr error) {
-		a.mu.Lock()
-		if runErr != nil {
-			task.Status = "failed"
-			task.Error = runErr.Error()
-		} else {
-			task.Status = "completed"
-		}
-		a.mu.Unlock()
-		runtime.EventsEmit(a.ctx, "task:done", map[string]interface{}{
-			"id":     id,
-			"status": task.Status,
-			"error":  task.Error,
-		})
-	}
-
-	a.mu.Lock()
-	a.runner = runner
-	a.mu.Unlock()
-
-	go func() {
-		ctx := context.Background()
-		if runErr := runner.Run(ctx, args); runErr != nil {
-			_ = runErr
-		}
-	}()
+	a.runTask(id, task, args, 0)
 
 	return task, nil
 }
@@ -333,8 +291,8 @@ func (a *App) CancelTask(id string) error {
 		return fmt.Errorf("task is not running: %s", id)
 	}
 
-	if a.runner != nil {
-		a.runner.Cancel()
+	if runner, ok := a.runners[id]; ok {
+		runner.Cancel()
 	}
 
 	task.Status = "canceled"

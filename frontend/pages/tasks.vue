@@ -80,10 +80,9 @@
 </template>
 
 <script setup lang="ts">
-const { tasks, refreshTasks, cancelTask, getTaskLogs, getTaskProgress, setupListeners } = useFFmpeg()
+const { tasks, refreshTasks, cancelTask, getTaskLogs, getTaskProgress } = useFFmpeg()
 
 onMounted(() => {
-  setupListeners()
   refreshTasks()
 })
 
@@ -98,7 +97,7 @@ function statusBadgeClass(status: string): string {
     case 'running': return 'bg-blue-500/20 text-blue-400'
     case 'completed': return 'bg-green-500/20 text-green-400'
     case 'failed': return 'bg-red-500/20 text-red-400'
-    case 'cancelled': return 'bg-yellow-500/20 text-yellow-400'
+    case 'canceled': return 'bg-yellow-500/20 text-yellow-400'
     default: return 'bg-gray-500/20 text-gray-400'
   }
 }

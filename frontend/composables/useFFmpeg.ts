@@ -1,3 +1,5 @@
+import type { Ref } from 'vue'
+
 export interface Task {
   id: string
   type: string
@@ -83,15 +85,18 @@ function getWailsBindings() {
   return app
 }
 
+// Shared state (module-level, singleton across all component instances)
+const tasks: Ref<Task[]> = ref<Task[]>([])
+const logs = ref<Map<string, string[]>>(new Map())
+const progress = ref<Map<string, ProgressEvent>>(new Map())
+const ffmpegVersion = ref('')
+const listenersReady = ref(false)
+
 export function useFFmpeg() {
-  const tasks = ref<Task[]>([])
-  const logs = ref<Map<string, string[]>>(new Map())
-  const progress = ref<Map<string, ProgressEvent>>(new Map())
-  const ffmpegVersion = ref('')
   const isWailsReady = computed(() => !!getWailsBindings())
 
-  // Event listeners
   function setupListeners() {
+    if (listenersReady.value) return
     const rt = window.runtime
     if (!rt) return
 
@@ -108,6 +113,8 @@ export function useFFmpeg() {
     rt.EventsOn('task:done', (data: { id: string; status: string; error?: string }) => {
       refreshTasks()
     })
+
+    listenersReady.value = true
   }
 
   async function startConvert(payload: ConvertPayload): Promise<Task | null> {

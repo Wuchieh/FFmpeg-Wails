@@ -153,7 +153,6 @@ const {
   cancelTask,
   getTaskLogs,
   getTaskProgress,
-  setupListeners,
 } = useFFmpeg()
 
 const rtmpPresets = [
@@ -192,7 +191,7 @@ const currentProgressDetails = computed(() => {
 })
 
 onMounted(() => {
-  setupListeners()
+  // Listeners are set up in app.vue
 })
 
 async function handleSubmit() {

@@ -155,7 +155,6 @@ const {
   selectDirectory,
   getTaskLogs,
   getTaskProgress,
-  setupListeners,
 } = useFFmpeg()
 
 const form = reactive({
@@ -190,7 +189,7 @@ const currentProgressDetails = computed(() => {
 })
 
 onMounted(() => {
-  setupListeners()
+  // Listeners are set up in app.vue
 })
 
 async function handleSubmit() {

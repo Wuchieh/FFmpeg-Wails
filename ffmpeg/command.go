@@ -46,11 +46,6 @@ func BuildConvertArgs(opts ConvertOptions) ([]string, error) {
 
 	args := []string{"-i", opts.Input}
 
-	// Subtitle burn-in
-	if opts.SubtitleFile != "" {
-		args = append(args, "-vf", fmt.Sprintf("subtitles=%s", escapeFilterPath(opts.SubtitleFile)))
-	}
-
 	// Video codec
 	if opts.VideoCodec != "" {
 		args = append(args, "-c:v", opts.VideoCodec)
@@ -66,9 +61,16 @@ func BuildConvertArgs(opts ConvertOptions) ([]string, error) {
 		args = append(args, "-b:v", opts.Bitrate)
 	}
 
-	// Resolution via scale filter
+	// Build combined -vf filter chain for subtitle and scale
+	var vfFilters []string
+	if opts.SubtitleFile != "" {
+		vfFilters = append(vfFilters, fmt.Sprintf("subtitles=%s", escapeFilterPath(opts.SubtitleFile)))
+	}
 	if opts.Resolution != "" {
-		args = append(args, "-vf", fmt.Sprintf("scale=%s", opts.Resolution))
+		vfFilters = append(vfFilters, fmt.Sprintf("scale=%s", opts.Resolution))
+	}
+	if len(vfFilters) > 0 {
+		args = append(args, "-vf", strings.Join(vfFilters, ","))
 	}
 
 	// Frame rate
@@ -91,7 +93,7 @@ func BuildConvertArgs(opts ConvertOptions) ([]string, error) {
 		args = append(args, "-f", opts.Format)
 	}
 
-	// Extra user-provided arguments
+	// Extra user-provided arguments (placed before output for safety)
 	if opts.ExtraArgs != "" {
 		extra := strings.Fields(opts.ExtraArgs)
 		args = append(args, extra...)

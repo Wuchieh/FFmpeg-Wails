@@ -18,6 +18,15 @@
   </div>
 </template>
 
+<script setup lang="ts">
+const { setupListeners, fetchVersion } = useFFmpeg()
+
+onMounted(() => {
+  setupListeners()
+  fetchVersion()
+})
+</script>
+
 <style>
 .nav-link {
   @apply text-sm text-gray-400 hover:text-gray-100 transition-colors;
