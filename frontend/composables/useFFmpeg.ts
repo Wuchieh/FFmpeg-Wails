@@ -58,7 +58,7 @@ export interface LogEvent {
 declare global {
   interface Window {
     go?: {
-      main?: {
+      backend?: {
         App?: {
           StartTask: (payload: string) => Promise<Task>
           GetTaskStatus: (id: string) => Promise<Task>
@@ -78,7 +78,7 @@ declare global {
 }
 
 function getWailsBindings() {
-  const app = window.go?.main?.App
+  const app = window.go?.backend?.App
   if (!app) {
     return null
   }
