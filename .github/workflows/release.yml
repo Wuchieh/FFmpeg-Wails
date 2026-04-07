@@ -104,29 +104,49 @@ jobs:
       - name: Build with Wails
         shell: bash
         run: |
-          ARGS="-platform ${{ matrix.platform.wails-platform }} -o FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }} -skipbindings"
+          ARGS="-platform ${{ matrix.platform.wails-platform }} -skipbindings"
           if [ "$RUNNER_OS" = "Linux" ]; then
             ARGS="$ARGS -tags webkit2_41"
           fi
           wails build $ARGS
 
-      - name: Package macOS app
-        if: runner.os == 'macOS'
+      - name: Rename and package output
         shell: bash
         run: |
           cd build/bin
-          if [ -d "FFmpeg-Wails-darwin-universal.app" ]; then
-            zip -r FFmpeg-Wails-darwin-universal.zip FFmpeg-Wails-darwin-universal.app
-            rm -rf FFmpeg-Wails-darwin-universal.app
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            # wails may output as .app bundle or plain binary
+            if [ -d "*.app" ] || ls *.app 2>/dev/null; then
+              APP_NAME=$(ls *.app 2>/dev/null | head -1)
+              if [ -n "$APP_NAME" ]; then
+                zip -r FFmpeg-Wails-darwin-universal.zip "$APP_NAME"
+              fi
+            elif [ -f "FFmpeg-Wails" ]; then
+              mv FFmpeg-Wails FFmpeg-Wails-darwin-universal
+            fi
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            for f in *.exe; do
+              if [ "$f" != "FFmpeg-Wails-windows-amd64.exe" ]; then
+                mv "$f" FFmpeg-Wails-windows-amd64.exe
+              fi
+            done
+          elif [ "$RUNNER_OS" = "Linux" ]; then
+            for f in FFmpeg-Wails; do
+              if [ "$f" != "FFmpeg-Wails-linux-amd64" ]; then
+                mv "$f" FFmpeg-Wails-linux-amd64
+              fi
+            done
+            if [ -f "FFmpeg-Wails" ]; then
+              mv FFmpeg-Wails FFmpeg-Wails-linux-amd64
+            fi
           fi
+          ls -la
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: FFmpeg-Wails-${{ matrix.platform.name }}
-          path: |
-            build/bin/FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }}
-            build/bin/FFmpeg-Wails-${{ matrix.platform.name }}.zip
+          path: build/bin/FFmpeg-Wails-*
 
   release:
     name: Create Release
