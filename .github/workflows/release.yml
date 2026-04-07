@@ -110,11 +110,23 @@ jobs:
           fi
           wails build $ARGS
 
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd build/bin
+          if [ -d "FFmpeg-Wails-darwin-universal.app" ]; then
+            zip -r FFmpeg-Wails-darwin-universal.zip FFmpeg-Wails-darwin-universal.app
+            rm -rf FFmpeg-Wails-darwin-universal.app
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: FFmpeg-Wails-${{ matrix.platform.name }}
-          path: build/bin/FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }}
+          path: |
+            build/bin/FFmpeg-Wails-${{ matrix.platform.name }}${{ matrix.platform.ext }}
+            build/bin/FFmpeg-Wails-${{ matrix.platform.name }}.zip
 
   release:
     name: Create Release
