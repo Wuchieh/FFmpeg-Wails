@@ -114,32 +114,30 @@ jobs:
         shell: bash
         run: |
           cd build/bin
+          echo "=== Files in build/bin ==="
+          ls -la
           if [ "$RUNNER_OS" = "macOS" ]; then
-            # wails may output as .app bundle or plain binary
-            if [ -d "*.app" ] || ls *.app 2>/dev/null; then
-              APP_NAME=$(ls *.app 2>/dev/null | head -1)
-              if [ -n "$APP_NAME" ]; then
-                zip -r FFmpeg-Wails-darwin-universal.zip "$APP_NAME"
+            APP_FILE=$(find . -name "*.app" -maxdepth 1 -type d | head -1)
+            if [ -n "$APP_FILE" ]; then
+              zip -r FFmpeg-Wails-darwin-universal.zip "$APP_FILE"
+            else
+              BINARY=$(find . -maxdepth 1 -type f ! -name ".*" | head -1)
+              if [ -n "$BINARY" ]; then
+                mv "$BINARY" FFmpeg-Wails-darwin-universal
               fi
-            elif [ -f "FFmpeg-Wails" ]; then
-              mv FFmpeg-Wails FFmpeg-Wails-darwin-universal
             fi
           elif [ "$RUNNER_OS" = "Windows" ]; then
-            for f in *.exe; do
-              if [ "$f" != "FFmpeg-Wails-windows-amd64.exe" ]; then
-                mv "$f" FFmpeg-Wails-windows-amd64.exe
-              fi
-            done
+            EXE_FILE=$(find . -name "*.exe" -maxdepth 1 | head -1)
+            if [ -n "$EXE_FILE" ] && [ "$EXE_FILE" != "./FFmpeg-Wails-windows-amd64.exe" ]; then
+              mv "$EXE_FILE" FFmpeg-Wails-windows-amd64.exe
+            fi
           elif [ "$RUNNER_OS" = "Linux" ]; then
-            for f in FFmpeg-Wails; do
-              if [ "$f" != "FFmpeg-Wails-linux-amd64" ]; then
-                mv "$f" FFmpeg-Wails-linux-amd64
-              fi
-            done
-            if [ -f "FFmpeg-Wails" ]; then
-              mv FFmpeg-Wails FFmpeg-Wails-linux-amd64
+            BINARY=$(find . -maxdepth 1 -type f -executable ! -name ".*" | head -1)
+            if [ -n "$BINARY" ] && [ "$BINARY" != "./FFmpeg-Wails-linux-amd64" ]; then
+              mv "$BINARY" FFmpeg-Wails-linux-amd64
             fi
           fi
+          echo "=== After rename ==="
           ls -la
 
       - name: Upload artifact
