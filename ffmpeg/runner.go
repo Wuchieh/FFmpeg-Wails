@@ -24,12 +24,12 @@ type ProgressInfo struct {
 
 // Runner executes FFmpeg commands and tracks progress.
 type Runner struct {
-	mu        sync.RWMutex
-	cmd       *exec.Cmd
-	cancel    context.CancelFunc
-	running   bool
-	canceled  bool // set to true when Cancel() is called to suppress duplicate OnDone
-	logs      []string
+	mu       sync.RWMutex
+	cmd      *exec.Cmd
+	cancel   context.CancelFunc
+	running  bool
+	canceled bool // set to true when Cancel() is called to suppress duplicate OnDone
+	logs     []string
 
 	// Duration of the input file in seconds, used for progress calculation.
 	Duration float64

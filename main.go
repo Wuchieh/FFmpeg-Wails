@@ -2,10 +2,11 @@ package main
 
 import (
 	"embed"
-	"ffmpeg-wails/backend"
 	"fmt"
 	"log"
 	"os/exec"
+
+	"ffmpeg-wails/backend"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
