@@ -24,11 +24,12 @@ type ProgressInfo struct {
 
 // Runner executes FFmpeg commands and tracks progress.
 type Runner struct {
-	mu      sync.RWMutex
-	cmd     *exec.Cmd
-	cancel  context.CancelFunc
-	running bool
-	logs    []string
+	mu        sync.RWMutex
+	cmd       *exec.Cmd
+	cancel    context.CancelFunc
+	running   bool
+	canceled  bool // set to true when Cancel() is called to suppress duplicate OnDone
+	logs      []string
 
 	// Duration of the input file in seconds, used for progress calculation.
 	Duration float64
@@ -81,6 +82,7 @@ func (r *Runner) Run(ctx context.Context, args []string) error {
 	}
 
 	scanner := bufio.NewScanner(stderr)
+	scanner.Buffer(make([]byte, 0), 1024*1024) // 1MB buffer to avoid "token too long"
 	for scanner.Scan() {
 		line := scanner.Text()
 		r.mu.Lock()
@@ -102,7 +104,10 @@ func (r *Runner) Run(ctx context.Context, args []string) error {
 	}
 
 	if err = r.cmd.Wait(); err != nil {
-		if ctx.Err() == context.Canceled {
+		r.mu.Lock()
+		wasCanceled := r.canceled
+		r.mu.Unlock()
+		if ctx.Err() == context.Canceled || wasCanceled {
 			if r.OnDone != nil {
 				r.OnDone(fmt.Errorf("canceled"))
 			}
@@ -126,8 +131,11 @@ func (r *Runner) Run(ctx context.Context, args []string) error {
 
 // Cancel terminates the running FFmpeg process.
 func (r *Runner) Cancel() {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	if r.cancel != nil {
+		r.canceled = true
+	}
+	r.mu.Unlock()
 	if r.cancel != nil {
 		r.cancel()
 	}

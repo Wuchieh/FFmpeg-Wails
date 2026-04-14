@@ -10,6 +10,7 @@ export interface Task {
   output: string
   createdAt: string
   error?: string
+  warning?: string
 }
 
 export interface ConvertPayload {

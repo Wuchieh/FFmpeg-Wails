@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"ffmpeg-wails/ffmpeg"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ type Task struct {
 	Output    string    `json:"output"`
 	CreatedAt time.Time `json:"createdAt"`
 	Error     string    `json:"error,omitempty"`
+	Warning   string    `json:"warning,omitempty"`
 }
 
 // ConvertPayload is the JSON payload sent from the frontend for conversion tasks.
@@ -229,7 +231,26 @@ func (a *App) startConvertTask(id string, task *Task, payloadJSON string) (*Task
 	task.Command = fmt.Sprintf("ffmpeg %s", strings.Join(args, " "))
 	task.Status = "running"
 
-	duration, _ := ffmpeg.GetInputDuration(payload.Input)
+	duration, err := ffmpeg.GetInputDuration(payload.Input)
+	if err != nil {
+		task.Error = fmt.Sprintf("failed to probe input duration: %v", err)
+		// Continue with duration=0; progress will not be calculated
+	}
+
+	// Check for output path conflicts with running tasks
+	a.mu.Lock()
+	for _, t := range a.tasks {
+		if t.ID != id && t.Status == "running" && t.Output == payload.Output {
+			a.mu.Unlock()
+			return nil, fmt.Errorf("output path is already in use by another running task: %s", payload.Output)
+		}
+	}
+	a.mu.Unlock()
+
+	// Warn if output file already exists (ffmpeg -y will overwrite silently)
+	if _, err := os.Stat(payload.Output); err == nil {
+		task.Warning = "output file already exists and will be overwritten"
+	}
 
 	a.runTask(id, task, args, duration)
 
@@ -298,11 +319,9 @@ func (a *App) CancelTask(id string) error {
 	task.Status = "canceled"
 	task.Error = "canceled by user"
 
-	runtime.EventsEmit(a.ctx, "task:done", map[string]interface{}{
-		"id":     id,
-		"status": "canceled",
-		"error":  "canceled by user",
-	})
+	// Note: runner.OnDone will also fire and emit task:done.
+	// The frontend should handle the first event it receives.
+	// We emit here for immediate feedback, but OnDone must not emit again.
 
 	return nil
 }

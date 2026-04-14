@@ -119,13 +119,16 @@
 
     <!-- Active Stream -->
     <div v-if="activeTask" class="space-y-2">
-      <ProgressBar
-        :value="0"
-        :status="activeTask.status"
-        :label="`Stream: ${activeTask.status}`"
-        v-bind="currentProgressDetails"
-      />
-      <LogViewer :lines="currentLogs" />
+      <div v-if="activeTask.status === 'running'" class="flex items-center gap-2">
+        <span class="relative inline-flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+        </span>
+        <span class="text-sm text-gray-300">Streaming live...</span>
+      </div>
+      <div v-if="currentLogs.length > 0">
+        <LogViewer :lines="currentLogs" />
+      </div>
       <button
         v-if="activeTask.status === 'running'"
         class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors"

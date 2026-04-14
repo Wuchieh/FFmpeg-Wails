@@ -156,15 +156,11 @@ func BuildStreamArgs(opts StreamOptions) ([]string, error) {
 	case "rtmp":
 		args = append(args, "-f", "flv", opts.URL)
 	case "srt":
-		srtURL := opts.URL
+		// FFmpeg SRT latency is set via -latency flag, not URL query param
 		if opts.Latency > 0 {
-			separator := "?"
-			if strings.Contains(srtURL, "?") {
-				separator = "&"
-			}
-			srtURL = fmt.Sprintf("%s%slatency=%d", srtURL, separator, opts.Latency)
+			args = append(args, "-latency", fmt.Sprintf("%d", opts.Latency))
 		}
-		args = append(args, "-f", "mpegts", srtURL)
+		args = append(args, "-f", "mpegts", opts.URL)
 	default:
 		return nil, fmt.Errorf("unsupported protocol: %s (use rtmp or srt)", opts.Protocol)
 	}

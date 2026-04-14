@@ -65,6 +65,10 @@
           {{ task.error }}
         </div>
 
+        <div v-if="task.warning" class="text-xs text-yellow-400 bg-yellow-900/20 rounded p-2">
+          {{ task.warning }}
+        </div>
+
         <!-- Collapsible logs -->
         <details v-if="getTaskLogs(task.id).length > 0" class="group">
           <summary class="cursor-pointer text-xs text-gray-500 hover:text-gray-300">
